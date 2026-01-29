@@ -620,10 +620,10 @@
             <h2>Transform Images into Interactive Experiences</h2>
             <p>Create engaging, interactive images with our powerful marker tools. Perfect for education, real estate, virtual tours, presentations, and more.</p>
             <div class="cta-buttons">
-                <a href="https://jaysecotools.github.io/ImageMarker2D/" class="btn btn-secondary btn-large">
+                <a href="https://jaysecotools.github.io/ImageMarker2D/" class="btn btn-primary btn-large" target="_blank">
                     <i class="fas fa-image"></i> Try 2D Marker Tool
                 </a>
-                <a href="https://jaysecotools.github.io/ImageMarker3D/" class="btn btn-secondary btn-large">
+                <a href="https://jaysecotools.github.io/ImageMarker3D/" class="btn btn-primary btn-large" target="_blank">
                     <i class="fas fa-globe-americas"></i> Try 360° Marker Tool
                 </a>
             </div>
@@ -665,9 +665,9 @@
                         </div>
                         
                         <div class="app-actions">
-                            <button class="btn btn-primary launch-app" data-app="2d">
+                            <a href="https://jaysecotools.github.io/ImageMarker2D/" class="btn btn-primary" target="_blank">
                                 <i class="fas fa-play"></i> Launch App
-                            </button>
+                            </a>
                             <button class="btn btn-secondary demo-app" data-app="2d">
                                 <i class="fas fa-eye"></i> View Demo
                             </button>
@@ -705,9 +705,9 @@
                         </div>
                         
                         <div class="app-actions">
-                            <button class="btn btn-primary launch-app" data-app="360">
+                            <a href="https://jaysecotools.github.io/ImageMarker3D/" class="btn btn-primary" target="_blank">
                                 <i class="fas fa-play"></i> Launch App
-                            </button>
+                            </a>
                             <button class="btn btn-secondary demo-app" data-app="360">
                                 <i class="fas fa-eye"></i> View Demo
                             </button>
@@ -853,8 +853,8 @@
                 <div class="footer-section">
                     <h3>Quick Links</h3>
                     <ul class="footer-links">
-                        <li><a href="https://jaysecotools.github.io/ImageMarker2D/">2D Marker Tool</a></li>
-                        <li><a href="https://jaysecotools.github.io/ImageMarker3D/">360° Marker Tool</a></li>
+                        <li><a href="https://jaysecotools.github.io/ImageMarker2D/" target="_blank">2D Marker Tool</a></li>
+                        <li><a href="https://jaysecotools.github.io/ImageMarker3D/" target="_blank">360° Marker Tool</a></li>
                         <li><a href="#apps">All Tools</a></li>
                     </ul>
                 </div>
@@ -862,10 +862,10 @@
                 <div class="footer-section">
                     <h3>Features</h3>
                     <ul class="footer-links">
-                        <li><a href="#">Interactive Markers</a></li>
-                        <li><a href="#">HTML Export</a></li>
-                        <li><a href="#">VR Support</a></li>
-                        <li><a href="#">No Installation</a></li>
+                        <li><a href="#comparison">Interactive Markers</a></li>
+                        <li><a href="#comparison">HTML Export</a></li>
+                        <li><a href="#comparison">VR Support</a></li>
+                        <li><a href="#comparison">No Installation</a></li>
                     </ul>
                 </div>
                 
@@ -873,8 +873,8 @@
                     <h3>Support</h3>
                     <ul class="footer-links">
                         <li><a href="#" class="demo-app" data-app="2d">View Demos</a></li>
-                        <li><a href="#">Documentation</a></li>
-                        <li><a href="#">Contact</a></li>
+                        <li><a href="https://github.com/jaysecotools" target="_blank">GitHub</a></li>
+                        <li><a href="mailto:contact@example.com">Contact</a></li>
                     </ul>
                 </div>
             </div>
@@ -917,8 +917,7 @@
                     'Interactive maps and floor plans',
                     'Photo annotations and documentation',
                     'Website mockups with clickable areas'
-                ],
-                code: `<!-- The full 2D app code would be here -->`
+                ]
             },
             '360': {
                 title: '360° Image Marker Tool',
@@ -939,8 +938,7 @@
                     'Interactive travel experiences',
                     'Training simulations',
                     'VR-ready presentations'
-                ],
-                code: `<!-- The full 360° app code would be here -->`
+                ]
             }
         };
 
@@ -952,14 +950,6 @@
 
         // Event Listeners
         document.addEventListener('DOMContentLoaded', () => {
-            // Launch app buttons
-            document.querySelectorAll('.launch-app').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const appType = e.target.closest('.launch-app').dataset.app;
-                    launchApp(appType);
-                });
-            });
-
             // Demo buttons
             document.querySelectorAll('.demo-app').forEach(button => {
                 button.addEventListener('click', (e) => {
@@ -996,21 +986,6 @@
                 });
             });
         });
-
-        // Launch app function
-        function launchApp(appType) {
-            if (appType === '2d') {
-                // Create a new window/tab with the 2D app
-                const appWindow = window.open('https://jaysecotools.github.io/ImageMarker2D/', '_blank');
-                appWindow.document.write(apps['2d'].code);
-                appWindow.document.close();
-            } else if (appType === '360') {
-                // Create a new window/tab with the 360° app
-                const appWindow = window.open('https://jaysecotools.github.io/ImageMarker3D/', '_blank');
-                appWindow.document.write(apps['360'].code);
-                appWindow.document.close();
-            }
-        }
 
         // Show demo function
         function showDemo(appType) {
@@ -1050,9 +1025,9 @@
                     </div>
                     
                     <div style="text-align: center; margin-top: 30px;">
-                        <button class="btn btn-primary" onclick="launchApp('${appType}')" style="margin-right: 15px;">
+                        <a href="https://jaysecotools.github.io/${appType === '2d' ? 'ImageMarker2D' : 'ImageMarker3D'}/" class="btn btn-primary" target="_blank" style="margin-right: 15px; text-decoration: none;">
                             <i class="fas fa-play"></i> Launch Full App
-                        </button>
+                        </a>
                         <button class="btn btn-secondary" onclick="demoModal.classList.remove('active')">
                             <i class="fas fa-times"></i> Close
                         </button>
