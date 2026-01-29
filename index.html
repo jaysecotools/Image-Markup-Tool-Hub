@@ -620,7 +620,7 @@
             <h2>Transform Images into Interactive Experiences</h2>
             <p>Create engaging, interactive images with our powerful marker tools. Perfect for education, real estate, virtual tours, presentations, and more.</p>
             <div class="cta-buttons">
-                <a href="https://jaysecotools.github.io/ImageMarker2D/" class="btn btn-primary btn-large">
+                <a href="https://jaysecotools.github.io/ImageMarker2D/" class="btn btn-secondary btn-large">
                     <i class="fas fa-image"></i> Try 2D Marker Tool
                 </a>
                 <a href="https://jaysecotools.github.io/ImageMarker3D/" class="btn btn-secondary btn-large">
@@ -1001,12 +1001,12 @@
         function launchApp(appType) {
             if (appType === '2d') {
                 // Create a new window/tab with the 2D app
-                const appWindow = window.open('', '_blank');
+                const appWindow = window.open('https://jaysecotools.github.io/ImageMarker2D/', '_blank');
                 appWindow.document.write(apps['2d'].code);
                 appWindow.document.close();
             } else if (appType === '360') {
                 // Create a new window/tab with the 360° app
-                const appWindow = window.open('', '_blank');
+                const appWindow = window.open('https://jaysecotools.github.io/ImageMarker3D/', '_blank');
                 appWindow.document.write(apps['360'].code);
                 appWindow.document.close();
             }
