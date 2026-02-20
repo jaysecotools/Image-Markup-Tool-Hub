@@ -1,0 +1,2415 @@
+<!-- Added link displays to info boxes - CORS proxy updates to try and improve displays-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Image Marker Tool</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* === ENHANCED 3D-STYLE CSS === */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; flex-direction: column; height: 100vh; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #e6e6e6; overflow: hidden; }
+        
+        /* Header */
+        .header { 
+            background: rgba(0, 0, 0, 0.7); 
+            padding: 15px 20px; 
+            border-bottom: 2px solid #00b4d8; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-shrink: 0; 
+        }
+        .header h1 { 
+            color: #00b4d8; 
+            font-size: 2rem; 
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .header-controls { display: flex; gap: 10px; }
+        
+        /* Main container layout */
+        .main-container { 
+            display: flex; 
+            flex: 1; 
+            overflow: hidden; 
+        }
+        
+        /* Left panel styling */
+        .left-panel { 
+            width: 320px; 
+            background: rgba(30, 30, 46, 0.9); 
+            padding: 20px; 
+            overflow-y: auto; 
+            border-right: 1px solid #444; 
+            flex-shrink: 0; 
+        }
+        .panel-section { 
+            margin-bottom: 25px; 
+            padding-bottom: 20px; 
+            border-bottom: 1px solid #444; 
+        }
+        .panel-section h3 { 
+            color: #00b4d8; 
+            margin-bottom: 15px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        
+        /* Upload area */
+        .upload-area { 
+            border: 3px dashed #00b4d8; 
+            border-radius: 10px; 
+            padding: 30px 20px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            background: rgba(0, 180, 216, 0.05); 
+            margin-bottom: 20px; 
+            position: relative;
+        }
+        .upload-area.dragover { 
+            background: rgba(0, 180, 216, 0.2); 
+            border-color: #90e0ef; 
+        }
+        .upload-area:hover { 
+            background: rgba(0, 180, 216, 0.1); 
+            border-color: #90e0ef; 
+        }
+        .upload-area i { 
+            font-size: 48px; 
+            color: #00b4d8; 
+            margin-bottom: 15px; 
+        }
+        .upload-area p { margin: 10px 0; }
+        .upload-area .file-info { 
+            font-size: 0.9rem; 
+            color: #aaa; 
+        }
+        
+        /* Button styles */
+        .button { 
+            display: inline-block; 
+            padding: 12px 20px; 
+            margin: 5px 0; 
+            border: none; 
+            border-radius: 6px; 
+            background: #00b4d8; 
+            color: white; 
+            font-weight: bold; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+            text-align: center; 
+            text-decoration: none;
+        }
+        .button:hover { 
+            background: #0077b6; 
+            transform: translateY(-2px); 
+        }
+        .button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .button.full { width: 100%; }
+        .button.secondary { background: #444; }
+        .button.secondary:hover { background: #555; }
+        .button.danger { background: #e63946; }
+        .button.danger:hover { background: #d00000; }
+        .button.warning { background: #f8961e; color: #000; }
+        .button.warning:hover { background: #e68a1b; }
+        .button i { margin-right: 8px; }
+        
+        /* Marker type selector */
+        .marker-type-selector { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+            margin-bottom: 15px; 
+        }
+        .marker-type { 
+            padding: 10px; 
+            border: 2px solid transparent; 
+            border-radius: 6px; 
+            text-align: center; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            background: rgba(255, 255, 255, 0.05); 
+        }
+        .marker-type.selected { 
+            border-color: #00b4d8; 
+            background: rgba(0, 180, 216, 0.1); 
+        }
+        .marker-type i { 
+            font-size: 20px; 
+            margin-bottom: 5px; 
+            display: block; 
+        }
+        /* Marker type colors */
+        .marker-type.info { color: #4cc9f0; }
+        .marker-type.link { color: #4361ee; }
+        .marker-type.video { color: #f72585; }
+        .marker-type.audio { color: #7209b7; }
+        .marker-type.warning { color: #f8961e; }
+        .marker-type.question { color: #2a9d8f; }
+        
+/* Add to your existing CSS in the marker styles section */
+
+.marker.dragging {
+    cursor: grabbing !important;
+    z-index: 20 !important;
+    opacity: 0.8 !important;
+    box-shadow: 0 0 0 3px white, 0 0 15px rgba(0, 180, 216, 0.8) !important;
+    transform: translate(-50%, -50%) scale(1.3) !important;
+}
+
+.marker:hover {
+    cursor: grab;
+}
+
+.marker:active {
+    cursor: grabbing;
+}
+
+/* Add a hint about dragging */
+.shortcut-hint {
+    font-size: 0.8rem;
+    color: #aaa;
+    margin-top: 10px;
+    text-align: center;
+}
+
+        /* Form styles */
+        .marker-form input, 
+        .marker-form textarea { 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 12px; 
+            border: 1px solid #555; 
+            border-radius: 4px; 
+            background: rgba(255, 255, 255, 0.1); 
+            color: white; 
+        }
+        .marker-form textarea { 
+            height: 80px; 
+            resize: vertical; 
+        }
+        .url-field { display: none; }
+        .url-field.visible { display: block; }
+        
+        /* Marker list */
+        .marker-list { 
+            max-height: 300px; 
+            overflow-y: auto; 
+        }
+        .marker-item { 
+            background: rgba(255, 255, 255, 0.05); 
+            border-left: 4px solid #00b4d8; 
+            padding: 12px; 
+            margin-bottom: 10px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            display: flex;
+            flex-direction: column;
+        }
+        .marker-item:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+        }
+        .marker-item.selected { 
+            background: rgba(0, 180, 216, 0.15); 
+            border-left-color: #90e0ef;
+        }
+        .marker-item-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .marker-item-title { 
+            font-weight: bold; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        .marker-item-type { 
+            font-size: 0.8rem; 
+            padding: 2px 8px; 
+            border-radius: 10px; 
+            background: rgba(255, 255, 255, 0.1); 
+        }
+        .marker-item-description { 
+            font-size: 0.9rem; 
+            color: #aaa; 
+            margin-top: 5px; 
+            overflow: hidden; 
+            text-overflow: ellipsis; 
+            white-space: nowrap; 
+        }
+        .marker-item-actions { 
+            display: flex; 
+            gap: 5px; 
+            margin-top: 10px; 
+        }
+        .marker-action-btn { 
+            padding: 4px 10px; 
+            border: none; 
+            border-radius: 4px; 
+            font-size: 0.8rem; 
+            cursor: pointer; 
+        }
+        .marker-action-btn.edit { 
+            background: #00b4d8; 
+            color: white; 
+        }
+        .marker-action-btn.delete { 
+            background: #e63946; 
+            color: white; 
+        }
+        
+        /* Viewer container */
+        .viewer-container { 
+            flex: 1; 
+            position: relative; 
+            overflow: hidden; 
+            padding: 20px; 
+        }
+        
+        /* Image container */
+        .image-container { 
+            width: 100%; 
+            height: 100%; 
+            border: 2px dashed #444; 
+            border-radius: 10px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            position: relative; 
+            overflow: hidden; 
+            background: rgba(0, 0, 0, 0.3); 
+            cursor: crosshair;
+        }
+        
+        /* Image display */
+        #imageDisplay { 
+            max-width: 100%; 
+            max-height: 100%; 
+            display: none; 
+            object-fit: contain;
+        }
+        .empty-state { 
+            text-align: center; 
+            color: #aaa; 
+            padding: 40px;
+        }
+        .empty-state i { 
+            font-size: 48px; 
+            margin-bottom: 20px; 
+            color: #444; 
+        }
+        
+        /* Markers */
+        .marker { 
+            position: absolute; 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            transform: translate(-50%, -50%); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 14px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
+            transition: all 0.2s; 
+            z-index: 10; 
+            border: 2px solid white;
+        }
+        .marker:hover { 
+            transform: translate(-50%, -50%) scale(1.2); 
+            z-index: 11;
+        }
+        .marker.selected { 
+            border: 3px solid white; 
+            box-shadow: 0 0 0 2px #00b4d8, 0 0 15px #00b4d8; 
+        }
+        .marker.preview { 
+            opacity: 0.5; 
+            z-index: 5; 
+            pointer-events: none;
+        }
+        /* Marker colors */
+        .marker.info { background: #4cc9f0; }
+        .marker.link { background: #4361ee; }
+        .marker.video { background: #f72585; }
+        .marker.audio { background: #7209b7; }
+        .marker.warning { background: #f8961e; }
+        .marker.question { background: #2a9d8f; }
+        
+        /* Popup */
+        .marker-popup { 
+            position: absolute; 
+            background: rgba(0, 0, 0, 0.95); 
+            color: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            border-left: 4px solid #00b4d8; 
+            max-width: 300px; 
+            min-width: 250px; 
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.7); 
+            z-index: 1000; 
+            pointer-events: auto; 
+            backdrop-filter: blur(5px); 
+            transition: opacity 0.3s ease; 
+            font-size: 14px; 
+            display: none; 
+        }
+        .popup-header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 10px; 
+        }
+        .popup-title { 
+            color: #00b4d8; 
+            margin: 0; 
+            flex: 1; 
+            font-size: 16px; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+        }
+        .popup-close { 
+            background: transparent; 
+            border: none; 
+            color: #aaa; 
+            cursor: pointer; 
+            font-size: 18px; 
+            width: 24px; 
+            height: 24px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 50%; 
+            transition: all 0.2s; 
+        }
+        .popup-close:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            color: white; 
+        }
+        .popup-content { margin-bottom: 15px; }
+        .popup-description { 
+            color: #aaa; 
+            line-height: 1.4; 
+            margin-bottom: 10px; 
+        }
+        .popup-link { 
+            color: #4cc9f0; 
+            text-decoration: none; 
+            display: block; 
+            margin-top: 10px; 
+            padding: 6px 12px; 
+            background: rgba(76, 201, 240, 0.1); 
+            border-radius: 4px; 
+            transition: background 0.3s; 
+            word-break: break-all;
+        }
+        .popup-link:hover { 
+            background: rgba(76, 201, 240, 0.2); 
+        }
+        .popup-media { width: 100%; margin-top: 10px; }
+        .video-container { 
+            position: relative; 
+            width: 100%; 
+            height: 0; 
+            padding-bottom: 56.25%; 
+            margin-top: 10px; 
+        }
+        .video-container iframe { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            border-radius: 4px; 
+        }
+        .popup-video, .popup-audio { width: 100%; border-radius: 4px; }
+        
+        /* Utility classes */
+        .hidden { display: none !important; }
+        .visible { display: block !important; }
+        .search-box { margin-bottom: 15px; }
+        .search-box input { 
+            width: 100%; 
+            padding: 10px; 
+            border-radius: 4px; 
+            background: rgba(255, 255, 255, 0.1); 
+            border: 1px solid #555; 
+            color: white; 
+        }
+        .form-buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+        .shortcut-hint { 
+            font-size: 0.8rem; 
+            color: #aaa; 
+            margin-top: 10px; 
+            text-align: center; 
+        }
+        .history-controls { display: flex; gap: 10px; margin-top: 10px; }
+        
+        /* Modals */
+        .modal-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0, 0, 0, 0.8); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 1000; 
+        }
+        .modal { 
+            background: #1a1a2e; 
+            padding: 30px; 
+            border-radius: 10px; 
+            max-width: 800px; 
+            width: 90%; 
+            max-height: 80vh; 
+            overflow-y: auto; 
+            border: 2px solid #00b4d8; 
+        }
+        .modal h3 { 
+            color: #00b4d8; 
+            margin-bottom: 20px; 
+            text-align: center; 
+        }
+        .modal textarea { 
+            width: 100%; 
+            height: 400px; 
+            padding: 15px; 
+            background: rgba(255, 255, 255, 0.05); 
+            border: 1px solid #444; 
+            border-radius: 5px; 
+            color: white; 
+            font-family: monospace; 
+            font-size: 12px; 
+            margin-bottom: 20px; 
+            resize: none; 
+            white-space: pre; 
+            overflow-x: auto; 
+        }
+        .modal-buttons { display: flex; gap: 10px; justify-content: center; }
+        
+        /* Responsive */
+        @media (max-width: 1024px) { 
+            .main-container { flex-direction: column; } 
+            .left-panel { width: 100%; max-height: 40vh; } 
+        }
+        @media (max-width: 768px) { 
+            .header { flex-direction: column; gap: 10px; text-align: center; } 
+            .marker-type-selector { grid-template-columns: repeat(2, 1fr); } 
+            .button { padding: 10px 15px; } 
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <h1><i class="fas fa-map-marker-alt"></i> Image Marker Tool</h1>
+        <div class="header-controls">
+            <button class="button secondary" id="saveProjectBtn">
+                <i class="fas fa-save"></i> Save Project
+            </button>
+            <button class="button secondary" id="loadProjectBtn">
+                <i class="fas fa-folder-open"></i> Load Project
+            </button>
+            <button class="button secondary" id="exportBtn">
+                <i class="fas fa-file-export"></i> Export HTML
+            </button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+            <div class="panel-section">
+                <h3><i class="fas fa-upload"></i> Upload Image</h3>
+                <div class="upload-area" id="uploadArea">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Click or drag & drop to upload image</p>
+                    <p class="file-info">Supported: JPG, PNG, GIF, WebP</p>
+                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                </div>
+                <div id="imageInfo" class="hidden">
+                    <p><strong>Current Image:</strong> <span id="currentImageName">None</span></p>
+                    <p><strong>Markers:</strong> <span id="markerCount">0</span></p>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3><i class="fas fa-map-marker-alt"></i> Add Marker</h3>
+                <div class="marker-type-selector">
+                    <div class="marker-type info selected" data-type="info">
+                        <i class="fas fa-info-circle"></i>
+                        <span>Info</span>
+                    </div>
+                    <div class="marker-type link" data-type="link">
+                        <i class="fas fa-link"></i>
+                        <span>Link</span>
+                    </div>
+                    <div class="marker-type video" data-type="video">
+                        <i class="fas fa-video"></i>
+                        <span>Video</span>
+                    </div>
+                    <div class="marker-type audio" data-type="audio">
+                        <i class="fas fa-volume-up"></i>
+                        <span>Audio</span>
+                    </div>
+                    <div class="marker-type warning" data-type="warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Warning</span>
+                    </div>
+                    <div class="marker-type question" data-type="question">
+                        <i class="fas fa-question-circle"></i>
+                        <span>Question</span>
+                    </div>
+                </div>
+
+                <div class="marker-form">
+                    <input type="text" id="markerTitle" class="form-control" placeholder="Marker title" required>
+                    <textarea id="markerDescription" class="form-control" placeholder="Marker description"></textarea>
+                    <input type="url" id="markerLink" class="form-control url-field" placeholder="https://example.com">
+                    <input type="url" id="markerVideo" class="form-control url-field" placeholder="https://youtube.com/watch?v=...">
+                    <input type="url" id="markerAudio" class="form-control url-field" placeholder="https://example.com/audio.mp3">
+                    
+                    <div class="form-buttons">
+                        <button id="saveMarker" class="button full">
+                            <i class="fas fa-save"></i> Save Marker
+                        </button>
+                        <button id="deleteMarker" class="button danger full" style="display: none;">
+                            <i class="fas fa-trash"></i> Delete Marker
+                        </button>
+                        <button id="clearForm" class="button secondary full">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-section">
+                <h3><i class="fas fa-list"></i> Markers (<span id="markerListCount">0</span>)</h3>
+                <div class="search-box">
+                    <input type="text" id="markerSearch" placeholder="Search markers...">
+                </div>
+                <div class="marker-list" id="markerList">
+                    <div class="empty-state">No markers added</div>
+                </div>
+                <button id="clearMarkers" class="button danger full">
+                    <i class="fas fa-trash"></i> Clear All Markers
+                </button>
+            </div>
+
+            <div class="panel-section">
+                <h3><i class="fas fa-project-diagram"></i> Tools</h3>
+                <div class="history-controls">
+                    <button id="undoBtn" class="button warning" title="Undo (Ctrl+Z)" disabled>
+                        <i class="fas fa-undo"></i> Undo
+                    </button>
+                    <button id="redoBtn" class="button warning" title="Redo (Ctrl+Y)" disabled>
+                        <i class="fas fa-redo"></i> Redo
+                    </button>
+                </div>
+                <div class="shortcut-hint">
+                    Shortcuts: Ctrl+S (Save), Ctrl+O (Load), Ctrl+E (Export), Del (Delete), Esc (Cancel)
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN VIEWER AREA -->
+        <div class="viewer-container">
+            <div class="image-container" id="imageContainer">
+                <div class="empty-state" id="emptyState">
+                    <i class="fas fa-image"></i>
+                    <div>Upload an image to get started</div>
+                </div>
+                <img id="imageDisplay" alt="Uploaded image">
+                <div class="marker-popup" id="markerPopup">
+                    <div class="popup-header">
+                        <h4 class="popup-title" id="popupTitle"></h4>
+                        <button class="popup-close" id="closePopup">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="popup-content">
+                        <p class="popup-description" id="popupDescription"></p>
+                        <a class="popup-link" id="popupLink" href="#" target="_blank" style="display: none;"></a>
+                        <div class="popup-media" id="popupMedia"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div class="modal-overlay hidden" id="exportModal">
+        <div class="modal">
+            <h3><i class="fas fa-file-export"></i> Export as HTML</h3>
+            <textarea id="exportCode" readonly></textarea>
+            <div class="modal-buttons">
+                <button class="button" id="copyCodeBtn"><i class="fas fa-copy"></i> Copy Code</button>
+                <button class="button secondary" id="downloadBtn"><i class="fas fa-download"></i> Download HTML</button>
+                <button class="button secondary" id="closeExportBtn"><i class="fas fa-times"></i> Close</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+// ====================== ENHANCED APPLICATION WITH DRAGGABLE MARKERS ======================
+class AppState {
+    constructor() {
+        this.markers = [];
+        this.currentImage = null;
+        this.selectedMarkerId = null;
+        this.currentMarkerType = 'info';
+        this.history = [];
+        this.historyIndex = -1;
+        this.previewMarker = null;
+        this.draggingMarker = null;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.markerStartX = 0;
+        this.markerStartY = 0;
+    }
+
+    addMarker(marker) {
+        this.markers.push(marker);
+        this.saveToHistory();
+    }
+
+    updateMarker(id, updates) {
+        const index = this.markers.findIndex(m => m.id === id);
+        if (index !== -1) {
+            this.markers[index] = { ...this.markers[index], ...updates };
+            this.saveToHistory();
+            return this.markers[index];
+        }
+        return null;
+    }
+
+    deleteMarker(id) {
+        this.markers = this.markers.filter(m => m.id !== id);
+        this.saveToHistory();
+    }
+
+    clearMarkers() {
+        this.markers = [];
+        this.saveToHistory();
+    }
+
+    getMarker(id) {
+        let marker = this.markers.find(m => m.id === id);
+        if (!marker && typeof id === 'string') {
+            const numericId = parseFloat(id);
+            if (!isNaN(numericId)) {
+                marker = this.markers.find(m => m.id === numericId);
+            }
+        }
+        if (!marker && typeof id === 'number') {
+            marker = this.markers.find(m => String(m.id) === String(id));
+        }
+        return marker;
+    }
+
+    saveToHistory() {
+        this.history = this.history.slice(0, this.historyIndex + 1);
+        this.history.push({
+            markers: JSON.parse(JSON.stringify(this.markers)),
+            image: this.currentImage ? { ...this.currentImage } : null
+        });
+        this.historyIndex++;
+        this.updateHistoryControls();
+    }
+
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            const state = this.history[this.historyIndex];
+            this.markers = state.markers ? JSON.parse(JSON.stringify(state.markers)) : [];
+            this.currentImage = state.image ? { ...state.image } : null;
+            this.updateHistoryControls();
+            return true;
+        }
+        return false;
+    }
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            const state = this.history[this.historyIndex];
+            this.markers = state.markers ? JSON.parse(JSON.stringify(state.markers)) : [];
+            this.currentImage = state.image ? { ...state.image } : null;
+            this.updateHistoryControls();
+            return true;
+        }
+        return false;
+    }
+
+    updateHistoryControls() {
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        if (undoBtn) undoBtn.disabled = this.historyIndex <= 0;
+        if (redoBtn) redoBtn.disabled = this.historyIndex >= this.history.length - 1;
+    }
+}
+
+class MarkerManager {
+    constructor(state) {
+        this.state = state;
+        this.markerThemes = {
+            info: { color: '#4cc9f0', icon: 'info-circle' },
+            link: { color: '#4361ee', icon: 'link' },
+            video: { color: '#f72585', icon: 'video' },
+            audio: { color: '#7209b7', icon: 'volume-up' },
+            warning: { color: '#f8961e', icon: 'exclamation-triangle' },
+            question: { color: '#2a9d8f', icon: 'question-circle' }
+        };
+        this.setupEventListeners();
+        this.setupDragAndDrop();
+    }
+
+    setupEventListeners() {
+        const markerList = document.getElementById('markerList');
+        markerList.replaceWith(markerList.cloneNode(true));
+        const freshMarkerList = document.getElementById('markerList');
+        freshMarkerList.addEventListener('click', (e) => {
+            this.handleMarkerCardClick(e);
+        });
+    }
+
+    setupDragAndDrop() {
+        const imageContainer = document.getElementById('imageContainer');
+        
+        // Mouse event handlers for dragging
+        imageContainer.addEventListener('mousedown', (e) => this.handleMarkerMouseDown(e));
+        imageContainer.addEventListener('mousemove', (e) => this.handleMarkerMouseMove(e));
+        imageContainer.addEventListener('mouseup', () => this.handleMarkerMouseUp());
+        
+        // Touch event handlers for mobile devices
+        imageContainer.addEventListener('touchstart', (e) => this.handleMarkerTouchStart(e), { passive: false });
+        imageContainer.addEventListener('touchmove', (e) => this.handleMarkerTouchMove(e), { passive: false });
+        imageContainer.addEventListener('touchend', () => this.handleMarkerMouseUp());
+        
+        // Prevent default drag behavior on markers
+        imageContainer.addEventListener('dragstart', (e) => {
+            if (e.target.classList.contains('marker')) {
+                e.preventDefault();
+            }
+        });
+    }
+
+    handleMarkerMouseDown(e) {
+        // Only handle left mouse button
+        if (e.button !== 0) return;
+        
+        const markerElement = e.target.closest('.marker');
+        if (!markerElement || markerElement.classList.contains('preview')) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const markerId = markerElement.dataset.id;
+        const marker = this.state.getMarker(markerId);
+        if (!marker) return;
+        
+        this.state.draggingMarker = marker;
+        this.state.dragStartX = e.clientX;
+        this.state.dragStartY = e.clientY;
+        this.state.markerStartX = marker.x;
+        this.state.markerStartY = marker.y;
+        
+        // Add dragging class for visual feedback
+        markerElement.classList.add('dragging');
+        
+        // Hide popup during drag
+        document.getElementById('markerPopup').style.display = 'none';
+    }
+
+    handleMarkerTouchStart(e) {
+        const markerElement = e.target.closest('.marker');
+        if (!markerElement || markerElement.classList.contains('preview')) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const markerId = markerElement.dataset.id;
+        const marker = this.state.getMarker(markerId);
+        if (!marker) return;
+        
+        const touch = e.touches[0];
+        this.state.draggingMarker = marker;
+        this.state.dragStartX = touch.clientX;
+        this.state.dragStartY = touch.clientY;
+        this.state.markerStartX = marker.x;
+        this.state.markerStartY = marker.y;
+        
+        markerElement.classList.add('dragging');
+        document.getElementById('markerPopup').style.display = 'none';
+    }
+
+    handleMarkerMouseMove(e) {
+        if (!this.state.draggingMarker) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const deltaX = e.clientX - this.state.dragStartX;
+        const deltaY = e.clientY - this.state.dragStartY;
+        
+        this.updateMarkerPosition(deltaX, deltaY);
+    }
+
+    handleMarkerTouchMove(e) {
+        if (!this.state.draggingMarker) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - this.state.dragStartX;
+        const deltaY = touch.clientY - this.state.dragStartY;
+        
+        this.updateMarkerPosition(deltaX, deltaY);
+    }
+
+    updateMarkerPosition(deltaX, deltaY) {
+        const container = document.getElementById('imageContainer');
+        const img = document.getElementById('imageDisplay');
+        if (!container || !img) return;
+        
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        
+        // Calculate pixel movement relative to image
+        const imageOffsetX = (containerRect.width - imgRect.width) / 2;
+        const imageOffsetY = (containerRect.height - imgRect.height) / 2;
+        
+        // Convert pixel delta to percentage
+        const percentDeltaX = (deltaX / imgRect.width) * 100;
+        const percentDeltaY = (deltaY / imgRect.height) * 100;
+        
+        // Calculate new position
+        let newX = this.state.markerStartX + percentDeltaX;
+        let newY = this.state.markerStartY + percentDeltaY;
+        
+        // Clamp to image bounds
+        newX = Math.max(0, Math.min(100, newX));
+        newY = Math.max(0, Math.min(100, newY));
+        
+        // Update marker data
+        this.state.draggingMarker.x = newX;
+        this.state.draggingMarker.y = newY;
+        
+        // Update marker element position
+        const markerElement = document.querySelector(`.marker[data-id="${this.state.draggingMarker.id}"]`);
+        if (markerElement) {
+            // Update data attributes
+            markerElement.dataset.x = newX;
+            markerElement.dataset.y = newY;
+            
+            // Calculate visual position
+            const markerX = imageOffsetX + (newX / 100) * imgRect.width;
+            const markerY = imageOffsetY + (newY / 100) * imgRect.height;
+            
+            markerElement.style.left = `${markerX}px`;
+            markerElement.style.top = `${markerY}px`;
+        }
+    }
+
+    handleMarkerMouseUp() {
+        if (!this.state.draggingMarker) return;
+        
+        // Update the marker in state
+        this.state.updateMarker(this.state.draggingMarker.id, {
+            x: this.state.draggingMarker.x,
+            y: this.state.draggingMarker.y
+        });
+        
+        // Remove dragging class
+        const markerElement = document.querySelector(`.marker[data-id="${this.state.draggingMarker.id}"]`);
+        if (markerElement) {
+            markerElement.classList.remove('dragging');
+        }
+        
+        // Show popup again
+        this.showMarkerPopup(this.state.draggingMarker);
+        
+        // Clear dragging state
+        this.state.draggingMarker = null;
+    }
+
+    handleMarkerCardClick(e) {
+        const markerItem = e.target.closest('.marker-item');
+        if (!markerItem) return;
+        
+        const markerId = markerItem.dataset.id;
+        const marker = this.state.getMarker(markerId);
+        if (!marker) return;
+        
+        if (e.target.classList.contains('edit') || e.target.closest('.edit')) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.selectMarker(marker.id);
+            this.populateFormWithMarker(marker);
+            return;
+        }
+        
+        if (e.target.classList.contains('delete') || e.target.closest('.delete')) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (confirm('Delete this marker?')) {
+                this.state.deleteMarker(marker.id);
+                this.renderAllMarkers();
+                this.updateMarkerList();
+                document.getElementById('markerPopup').style.display = 'none';
+                this.resetForm();
+            }
+            return;
+        }
+        
+        this.selectMarker(marker.id);
+        this.showMarkerPopup(marker);
+    }
+
+    createMarkerElement(marker) {
+        const existingMarker = document.querySelector(`.marker[data-id="${marker.id}"]`);
+        if (existingMarker) existingMarker.remove();
+        
+        const element = document.createElement('div');
+        element.className = `marker ${marker.type}`;
+        element.dataset.id = marker.id;
+        element.dataset.x = marker.x;
+        element.dataset.y = marker.y;
+        
+        // Add cursor style for draggable markers
+        element.style.cursor = 'grab';
+        
+        element.innerHTML = `<i class="fas fa-${this.markerThemes[marker.type].icon}"></i>`;
+        
+        // Click handler for selecting/showing popup
+        element.addEventListener('click', (e) => {
+            // Don't trigger click if we just finished dragging
+            if (element.classList.contains('dragging')) return;
+            
+            e.stopPropagation();
+            this.selectMarker(marker.id);
+            this.showMarkerPopup(marker);
+        });
+        
+        return element;
+    }
+
+    positionMarkerElement(element) {
+        const container = document.getElementById('imageContainer');
+        const img = document.getElementById('imageDisplay');
+        
+        if (!container || !img) return;
+        
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        
+        const percentX = parseFloat(element.dataset.x);
+        const percentY = parseFloat(element.dataset.y);
+        
+        const imageOffsetX = (containerRect.width - imgRect.width) / 2;
+        const imageOffsetY = (containerRect.height - imgRect.height) / 2;
+        
+        const markerX = imageOffsetX + (percentX / 100) * imgRect.width;
+        const markerY = imageOffsetY + (percentY / 100) * imgRect.height;
+        
+        element.style.left = `${markerX}px`;
+        element.style.top = `${markerY}px`;
+    }
+
+    renderAllMarkers() {
+        document.querySelectorAll('.marker:not(.preview)').forEach(m => m.remove());
+        
+        this.state.markers.forEach(marker => {
+            const element = this.createMarkerElement(marker);
+            document.getElementById('imageContainer').appendChild(element);
+            this.positionMarkerElement(element);
+        });
+    }
+
+    selectMarker(id) {
+        document.querySelectorAll('.marker').forEach(m => m.classList.remove('selected'));
+        document.querySelectorAll('.marker-item').forEach(m => m.classList.remove('selected'));
+        
+        const markerElement = document.querySelector(`.marker[data-id="${id}"]`);
+        const markerItem = document.querySelector(`.marker-item[data-id="${String(id)}"]`);
+        
+        if (markerElement) markerElement.classList.add('selected');
+        if (markerItem) markerItem.classList.add('selected');
+        
+        this.state.selectedMarkerId = id;
+        document.getElementById('deleteMarker').style.display = 'inline-block';
+    }
+
+    showMarkerPopup(marker) {
+        const popup = document.getElementById('markerPopup');
+        const title = document.getElementById('popupTitle');
+        const description = document.getElementById('popupDescription');
+        const link = document.getElementById('popupLink');
+        const media = document.getElementById('popupMedia');
+        
+        title.textContent = marker.title;
+        description.textContent = marker.description;
+        
+        link.style.display = 'none';
+        media.innerHTML = '';
+        
+        switch(marker.type) {
+            case 'link':
+                if (marker.link) {
+                    link.href = marker.link;
+                    link.textContent = marker.link.length > 50 ? 
+                        marker.link.substring(0, 50) + '...' : marker.link;
+                    link.style.display = 'block';
+                }
+                break;
+            case 'video':
+                if (marker.video) {
+                    const videoElement = this.createMediaElement(marker.video, 'video');
+                    if (videoElement) media.appendChild(videoElement);
+                }
+                break;
+            case 'audio':
+                if (marker.audio) {
+                    const audioElement = this.createMediaElement(marker.audio, 'audio');
+                    if (audioElement) media.appendChild(audioElement);
+                }
+                break;
+        }
+        
+        this.positionPopup(popup, marker);
+        popup.style.display = 'block';
+    }
+
+    positionPopup(popup, marker) {
+        const container = document.getElementById('imageContainer');
+        const containerRect = container.getBoundingClientRect();
+        
+        const markerElement = document.querySelector(`.marker[data-id="${marker.id}"]`);
+        if (!markerElement) return;
+        
+        const markerRect = markerElement.getBoundingClientRect();
+        const markerX = markerRect.left + markerRect.width / 2 - containerRect.left;
+        const markerY = markerRect.top + markerRect.height / 2 - containerRect.top;
+        
+        const popupWidth = popup.offsetWidth || 300;
+        const popupHeight = popup.offsetHeight || 200;
+        
+        let left = markerX + 40;
+        let top = markerY - popupHeight / 2;
+        
+        if (left + popupWidth > containerRect.width - 20) {
+            left = markerX - popupWidth - 40;
+        }
+        if (left < 20) left = 20;
+        
+        if (top + popupHeight > containerRect.height - 20) {
+            top = containerRect.height - popupHeight - 20;
+        }
+        if (top < 20) top = 20;
+        
+        popup.style.left = `${left}px`;
+        popup.style.top = `${top}px`;
+    }
+
+    createMediaElement(url, type) {
+        if (!url) return null;
+        
+        if (type === 'video') {
+            if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                const videoId = this.extractYouTubeId(url);
+                if (videoId) {
+                    const container = document.createElement('div');
+                    container.className = 'video-container';
+                    
+                    const iframe = document.createElement('iframe');
+                    iframe.src = `https://www.youtube.com/embed/${videoId}`;
+                    iframe.allowFullscreen = true;
+                    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                    
+                    container.appendChild(iframe);
+                    return container;
+                }
+            }
+            
+            const container = document.createElement('div');
+            container.className = 'video-container';
+            const video = document.createElement('video');
+            video.src = url;
+            video.controls = true;
+            video.className = 'popup-video';
+            container.appendChild(video);
+            return container;
+            
+        } else if (type === 'audio') {
+            const audio = document.createElement('audio');
+            audio.src = url;
+            audio.controls = true;
+            audio.className = 'popup-audio';
+            return audio;
+        }
+        
+        return null;
+    }
+
+    extractYouTubeId(url) {
+        const patterns = [
+            /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+            /^([A-Za-z0-9_-]{11})$/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match && match[1]) {
+                return match[1];
+            }
+        }
+        return null;
+    }
+
+    updateMarkerList() {
+        const markerList = document.getElementById('markerList');
+        const listCount = document.getElementById('markerListCount');
+        const markerCount = document.getElementById('markerCount');
+        
+        if (this.state.markers.length === 0) {
+            markerList.innerHTML = '<div class="empty-state">No markers added</div>';
+            listCount.textContent = '0';
+            markerCount.textContent = '0';
+            return;
+        }
+        
+        let html = '';
+        this.state.markers.forEach(marker => {
+            html += `
+                <div class="marker-item" data-id="${String(marker.id)}">
+                    <div class="marker-item-header">
+                        <div class="marker-item-title">
+                            <i class="fas fa-${this.markerThemes[marker.type].icon}"></i>
+                            ${marker.title}
+                        </div>
+                        <span class="marker-item-type">${marker.type}</span>
+                    </div>
+                    <div class="marker-item-description">${marker.description || 'No description'}</div>
+                    <div class="marker-item-actions">
+                        <button class="marker-action-btn edit" data-id="${String(marker.id)}">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="marker-action-btn delete" data-id="${String(marker.id)}">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        markerList.innerHTML = html;
+        listCount.textContent = this.state.markers.length;
+        markerCount.textContent = this.state.markers.length;
+    }
+
+    populateFormWithMarker(marker) {
+        document.getElementById('markerTitle').value = marker.title;
+        document.getElementById('markerDescription').value = marker.description || '';
+        document.getElementById('markerLink').value = marker.link || '';
+        document.getElementById('markerVideo').value = marker.video || '';
+        document.getElementById('markerAudio').value = marker.audio || '';
+        
+        document.querySelectorAll('.marker-type').forEach(el => el.classList.remove('selected'));
+        document.querySelector(`.marker-type[data-type="${marker.type}"]`).classList.add('selected');
+        this.state.currentMarkerType = marker.type;
+        this.updateFieldsVisibility();
+        
+        document.getElementById('deleteMarker').style.display = 'inline-block';
+    }
+
+    updateFieldsVisibility() {
+        document.querySelectorAll('.url-field').forEach(field => field.classList.remove('visible'));
+        
+        switch(this.state.currentMarkerType) {
+            case 'link':
+                document.getElementById('markerLink').classList.add('visible');
+                break;
+            case 'video':
+                document.getElementById('markerVideo').classList.add('visible');
+                break;
+            case 'audio':
+                document.getElementById('markerAudio').classList.add('visible');
+                break;
+        }
+    }
+
+    resetForm() {
+        document.getElementById('markerTitle').value = '';
+        document.getElementById('markerDescription').value = '';
+        document.getElementById('markerLink').value = '';
+        document.getElementById('markerVideo').value = '';
+        document.getElementById('markerAudio').value = '';
+        document.getElementById('deleteMarker').style.display = 'none';
+        this.state.selectedMarkerId = null;
+        
+        document.querySelectorAll('.marker-type').forEach(el => el.classList.remove('selected'));
+        document.querySelector('.marker-type[data-type="info"]').classList.add('selected');
+        this.state.currentMarkerType = 'info';
+        this.updateFieldsVisibility();
+        
+        document.querySelectorAll('.marker').forEach(m => m.classList.remove('selected'));
+        document.querySelectorAll('.marker-item').forEach(m => m.classList.remove('selected'));
+        
+        document.getElementById('markerPopup').style.display = 'none';
+    }
+
+    filterMarkers(searchTerm) {
+        const items = document.querySelectorAll('.marker-item');
+        let visibleCount = 0;
+        
+        items.forEach(item => {
+            const title = item.querySelector('.marker-item-title').textContent.toLowerCase();
+            const type = item.querySelector('.marker-item-type').textContent.toLowerCase();
+            const description = item.querySelector('.marker-item-description').textContent.toLowerCase();
+            
+            if (title.includes(searchTerm) || type.includes(searchTerm) || description.includes(searchTerm)) {
+                item.style.display = 'flex';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        if (visibleCount === 0 && searchTerm) {
+            document.getElementById('markerList').innerHTML = '<div class="empty-state">No markers found</div>';
+        }
+    }
+}
+
+class ImageManager {
+    constructor(state, markerManager) {
+        this.state = state;
+        this.markerManager = markerManager;
+        this.isMouseOverImage = false;
+    }
+
+    async loadImage(file) {
+        return new Promise((resolve, reject) => {
+            if (!file.type.startsWith('image/')) {
+                reject('Please upload a valid image file');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    this.state.currentImage = {
+                        src: e.target.result,
+                        width: img.width,
+                        height: img.height,
+                        name: file.name
+                    };
+                    
+                    document.getElementById('imageDisplay').src = e.target.result;
+                    document.getElementById('imageDisplay').style.display = 'block';
+                    document.getElementById('emptyState').style.display = 'none';
+                    document.getElementById('currentImageName').textContent = file.name;
+                    document.getElementById('imageInfo').classList.remove('hidden');
+                    
+                    this.state.markers = [];
+                    this.state.saveToHistory();
+                    this.markerManager.updateMarkerList();
+                    
+                    setTimeout(() => {
+                        this.markerManager.renderAllMarkers();
+                    }, 100);
+                    
+                    resolve();
+                };
+                img.onerror = () => reject('Error loading image');
+                img.src = e.target.result;
+            };
+            reader.onerror = () => reject('Error reading file');
+            reader.readAsDataURL(file);
+        });
+    }
+
+    setupImageEvents() {
+        const imageContainer = document.getElementById('imageContainer');
+        
+        imageContainer.addEventListener('click', (e) => this.handleImageClick(e));
+        imageContainer.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        imageContainer.addEventListener('mouseenter', () => this.isMouseOverImage = true);
+        imageContainer.addEventListener('mouseleave', () => {
+            this.isMouseOverImage = false;
+            this.removePreviewMarker();
+        });
+        
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (this.state.currentImage) {
+                    this.markerManager.renderAllMarkers();
+                }
+            }, 250);
+        });
+    }
+
+    handleImageClick(e) {
+        if (!this.state.currentImage) {
+            alert('Please upload an image first!');
+            return;
+        }
+        
+        // Don't add marker if clicking on existing marker, popup, or during drag
+        if (e.target.classList.contains('marker') || 
+            e.target.closest('.marker') ||
+            e.target.closest('.marker-popup') ||
+            this.state.draggingMarker) {
+            return;
+        }
+        
+        this.removePreviewMarker();
+        
+        const container = document.getElementById('imageContainer');
+        const img = document.getElementById('imageDisplay');
+        
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        
+        const clickX = e.clientX - containerRect.left;
+        const clickY = e.clientY - containerRect.top;
+        
+        const imageOffsetX = (containerRect.width - imgRect.width) / 2;
+        const imageOffsetY = (containerRect.height - imgRect.height) / 2;
+        
+        const imageRelativeX = clickX - imageOffsetX;
+        const imageRelativeY = clickY - imageOffsetY;
+        
+        if (imageRelativeX < 0 || imageRelativeX > imgRect.width || 
+            imageRelativeY < 0 || imageRelativeY > imgRect.height) {
+            return;
+        }
+        
+        const percentX = (imageRelativeX / imgRect.width) * 100;
+        const percentY = (imageRelativeY / imgRect.height) * 100;
+        
+        const marker = {
+            id: Date.now() + Math.random(),
+            type: this.state.currentMarkerType,
+            x: percentX,
+            y: percentY,
+            title: `New ${this.state.currentMarkerType.charAt(0).toUpperCase() + this.state.currentMarkerType.slice(1)} Marker`,
+            description: '',
+            link: '',
+            video: '',
+            audio: ''
+        };
+        
+        this.state.addMarker(marker);
+        this.markerManager.renderAllMarkers();
+        this.markerManager.updateMarkerList();
+        this.markerManager.selectMarker(marker.id);
+        this.markerManager.populateFormWithMarker(marker);
+        this.markerManager.showMarkerPopup(marker);
+    }
+
+    handleMouseMove(e) {
+        // Don't show preview marker during drag
+        if (this.state.draggingMarker) return;
+        
+        if (!this.state.currentImage || !this.isMouseOverImage) return;
+        
+        this.removePreviewMarker();
+        
+        const container = document.getElementById('imageContainer');
+        const img = document.getElementById('imageDisplay');
+        
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        
+        const mouseX = e.clientX - containerRect.left;
+        const mouseY = e.clientY - containerRect.top;
+        
+        const imageOffsetX = (containerRect.width - imgRect.width) / 2;
+        const imageOffsetY = (containerRect.height - imgRect.height) / 2;
+        
+        const imageRelativeX = mouseX - imageOffsetX;
+        const imageRelativeY = mouseY - imageOffsetY;
+        
+        if (imageRelativeX >= 0 && imageRelativeX <= imgRect.width && 
+            imageRelativeY >= 0 && imageRelativeY <= imgRect.height) {
+            
+            const percentX = (imageRelativeX / imgRect.width) * 100;
+            const percentY = (imageRelativeY / imgRect.height) * 100;
+            
+            this.showPreviewMarker(percentX, percentY);
+        }
+    }
+
+    showPreviewMarker(percentX, percentY) {
+        const container = document.getElementById('imageContainer');
+        const img = document.getElementById('imageDisplay');
+        const containerRect = container.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        
+        const imageOffsetX = (containerRect.width - imgRect.width) / 2;
+        const imageOffsetY = (containerRect.height - imgRect.height) / 2;
+        
+        const markerX = imageOffsetX + (percentX / 100) * imgRect.width;
+        const markerY = imageOffsetY + (percentY / 100) * imgRect.height;
+        
+        this.state.previewMarker = document.createElement('div');
+        this.state.previewMarker.className = `marker preview ${this.state.currentMarkerType}`;
+        this.state.previewMarker.style.left = `${markerX}px`;
+        this.state.previewMarker.style.top = `${markerY}px`;
+        this.state.previewMarker.innerHTML = 
+            `<i class="fas fa-${this.markerManager.markerThemes[this.state.currentMarkerType].icon}"></i>`;
+        
+        document.getElementById('imageContainer').appendChild(this.state.previewMarker);
+    }
+
+    removePreviewMarker() {
+        if (this.state.previewMarker) {
+            this.state.previewMarker.remove();
+            this.state.previewMarker = null;
+        }
+    }
+}
+
+class ExportManager {
+    constructor(state, markerManager) {
+        this.state = state;
+        this.markerManager = markerManager;
+    }
+
+    generateExportHTML(projectName, options = {}) {
+        const { responsive = true, smartPositioning = true } = options;
+        
+        const markersData = JSON.stringify(this.state.markers.map(marker => ({
+            id: marker.id,
+            type: marker.type,
+            x: marker.x,
+            y: marker.y,
+            title: marker.title,
+            description: marker.description,
+            link: marker.link,
+            video: marker.video,
+            audio: marker.audio
+        })));
+        
+        return `<!DOCTYPE html>
+<html>
+<head>
+    <title>${projectName}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; background: #f0f2f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .image-container { position: relative; display: inline-block; max-width: 100%; margin: 20px 0; }
+        img { max-width: 100%; height: auto; border-radius: 5px; display: block; }
+        .marker { 
+            position: absolute; 
+            width: 32px; 
+            height: 32px; 
+            border-radius: 50%; 
+            cursor: pointer; 
+            transform: translate(-50%, -50%); 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 14px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3); 
+            transition: transform 0.2s; 
+            border: 2px solid white;
+        }
+        .marker:hover { transform: translate(-50%, -50%) scale(1.2); }
+        .marker.info { background: #4cc9f0; }
+        .marker.link { background: #4361ee; }
+        .marker.video { background: #f72585; }
+        .marker.audio { background: #7209b7; }
+        .marker.warning { background: #f8961e; }
+        .marker.question { background: #2a9d8f; }
+        .popup { 
+            position: absolute; 
+            background: white; 
+            border: 1px solid #ccc; 
+            padding: 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+            display: none; 
+            z-index: 100; 
+            max-width: 350px; 
+            min-width: 250px; 
+            border-radius: 8px; 
+            border-left: 4px solid #00b4d8;
+        }
+        .popup-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .popup-title { color: #4a6fa5; margin: 0; flex: 1; font-size: 16px; }
+        .popup-close { background: none; border: none; font-size: 18px; cursor: pointer; color: #6c757d; padding: 0; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+        .popup-content { margin-bottom: 15px; }
+        .popup-description { color: #495057; line-height: 1.4; margin-bottom: 10px; }
+        .popup-link { display: block; color: #4a6fa5; text-decoration: none; margin-bottom: 10px; word-break: break-all; padding: 6px 12px; background: rgba(76, 201, 240, 0.1); border-radius: 4px; }
+        .popup-link:hover { background: rgba(76, 201, 240, 0.2); }
+        .popup-media { width: 100%; margin-top: 10px; }
+        .video-container { position: relative; width: 100%; height: 0; padding-bottom: 56.25%; margin-top: 10px; }
+        .video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; border-radius: 4px; }
+        .popup-video, .popup-audio { width: 100%; border-radius: 4px; }
+        
+        /* NEW: Link preview styles */
+        .link-preview { margin-top: 10px; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; background: #fff; }
+        .link-preview a { text-decoration: none; color: inherit; display: block; }
+        .link-preview-image { width: 100%; height: 150px; object-fit: cover; background: linear-gradient(45deg, #f5f5f5, #e0e0e0); }
+        .link-preview-content { padding: 12px; }
+        .link-preview-title { font-weight: bold; margin: 0 0 6px 0; font-size: 14px; color: #333; }
+        .link-preview-description { color: #666; font-size: 12px; margin: 0; line-height: 1.4; }
+        .link-preview-domain { color: #888; font-size: 11px; margin-top: 6px; display: flex; align-items: center; }
+        .link-preview-domain i { margin-right: 4px; font-size: 10px; }
+        
+        /* NEW: Loading indicator for previews */
+        .preview-loading { padding: 20px; text-align: center; color: #999; }
+        .preview-loading i { margin-right: 8px; }
+        
+        /* NEW: Error message for failed previews */
+        .preview-error { padding: 10px; background: #ffe6e6; color: #cc0000; border-radius: 4px; font-size: 12px; margin-top: 10px; text-align: center; }
+        
+        ${responsive ? `
+        @media (max-width: 768px) {
+            .container { padding: 10px; }
+            .popup { max-width: 90vw; min-width: 200px; }
+            .marker { width: 24px; height: 24px; font-size: 12px; }
+            .link-preview-image { height: 120px; }
+        }` : ''}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>${projectName}</h1>
+        <div class="image-container">
+            <img src="${this.state.currentImage.src}" alt="${projectName}" id="exportedImage">
+            <div id="markersContainer"></div>
+            <div class="popup" id="popup">
+                <div class="popup-header">
+                    <h4 class="popup-title" id="popupTitle"></h4>
+                    <button class="popup-close" onclick="document.getElementById('popup').style.display='none'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="popup-content">
+                    <p class="popup-description" id="popupDesc"></p>
+                    <a class="popup-link" id="popupLink" href="#" target="_blank" style="display: none;"></a>
+                    <div class="popup-media" id="popupMedia"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const markers = ${markersData};
+        const image = document.getElementById('exportedImage');
+        const markersContainer = document.getElementById('markersContainer');
+        const popup = document.getElementById('popup');
+        const popupTitle = document.getElementById('popupTitle');
+        const popupDesc = document.getElementById('popupDesc');
+        const popupLink = document.getElementById('popupLink');
+        const popupMedia = document.getElementById('popupMedia');
+        
+        const markerIcons = {
+            info: 'info-circle',
+            link: 'link',
+            video: 'video',
+            audio: 'volume-up',
+            warning: 'exclamation-triangle',
+            question: 'question-circle'
+        };
+        
+        // Function to fetch link preview metadata
+        async function fetchLinkPreview(url) {
+            if (!url) return null;
+            
+            // Alternative CORS proxies
+            const proxyUrls = [
+                'https://api.allorigins.win/raw?url=',
+                'https://corsproxy.io/?',
+                'https://crossorigin.me/'
+            ];
+            
+            // Try each proxy until one works
+            for (let i = 0; i < proxyUrls.length; i++) {
+                try {
+                    const proxyUrl = proxyUrls[i];
+                    console.log('Trying proxy:', i, proxyUrl);
+                    
+                    const response = await fetch(proxyUrl + encodeURIComponent(url), {
+                        timeout: 8000 // 8 second timeout
+                    });
+                    
+                    if (!response.ok) {
+                        console.warn('Proxy ' + i + ' failed: ' + response.status);
+                        continue; // Try next proxy
+                    }
+                    
+                    const html = await response.text();
+                    
+                    // Parse the HTML to extract metadata
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    
+                    const getMetaContent = (name) => {
+                        const meta = doc.querySelector('meta[name="' + name + '"], meta[property="' + name + '"]');
+                        return meta ? meta.getAttribute('content') : null;
+                    };
+                    
+                    // Extract the domain safely
+                    let domain = '';
+                    try {
+                        const urlObj = new URL(url);
+                        domain = urlObj.hostname;
+                        // Remove www. prefix if present
+                        domain = domain.replace(/^www\\./, '');
+                    } catch (e) {
+                        domain = url.split('/')[2] || '';
+                    }
+                    
+                    // Extract title (prioritize Open Graph, then Twitter, then regular title)
+                    let title = getMetaContent('og:title') || 
+                                getMetaContent('twitter:title') || 
+                                doc.querySelector('title')?.textContent?.trim() || '';
+                    
+                    // Extract description
+                    let description = getMetaContent('og:description') || 
+                                     getMetaContent('twitter:description') || 
+                                     getMetaContent('description') || '';
+                    
+                    // Extract image (try multiple sources)
+                    let image = getMetaContent('og:image') || 
+                                getMetaContent('twitter:image') || 
+                                getMetaContent('twitter:image:src') || 
+                                '';
+                    
+                    // Make relative URLs absolute
+                    if (image && !image.startsWith('http')) {
+                        try {
+                            const baseUrl = new URL(url).origin;
+                            image = new URL(image, baseUrl).href;
+                        } catch (e) {
+                            // If we can't make it absolute, just leave it as is
+                        }
+                    }
+                    
+                    return {
+                        title: title,
+                        description: description,
+                        image: image,
+                        url: url,
+                        domain: domain
+                    };
+                } catch (error) {
+                    console.warn('Proxy ' + i + ' error: ', error.message);
+                    // Continue to next proxy
+                }
+            }
+            
+            // If all proxies fail, return basic info
+            console.log('All proxies failed, returning basic info');
+            let domain = '';
+            try {
+                domain = new URL(url).hostname.replace(/^www\\./, '');
+            } catch (e) {
+                domain = '';
+            }
+            
+            return {
+                title: '',
+                description: '',
+                image: '',
+                url: url,
+                domain: domain
+            };
+        }
+        
+        // Helper function to create a timeout promise
+        function timeout(ms) {
+            return new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms));
+        }
+        
+        // Function to create link preview element
+        function createLinkPreview(previewData) {
+            if (!previewData) return null;
+            
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'link-preview';
+            
+            // Create clickable link wrapper
+            const linkWrapper = document.createElement('a');
+            linkWrapper.href = previewData.url;
+            linkWrapper.target = '_blank';
+            linkWrapper.rel = 'noopener noreferrer';
+            
+            let html = '';
+            
+            // Add image if available
+            if (previewData.image) {
+                html += '<img class="link-preview-image" src="' + previewData.image + '" alt="' + (previewData.title || 'Preview') + '" onerror="this.style.display=\\'none\\'">';
+            } else {
+                html += '<div class="link-preview-image" style="display: flex; align-items: center; justify-content: center; color: #999; font-size: 14px;">';
+                html += '<i class="fas fa-link"></i> Link Preview';
+                html += '</div>';
+            }
+            
+            html += '<div class="link-preview-content">';
+            
+            // Add title if available
+            if (previewData.title) {
+                html += '<div class="link-preview-title">' + escapeHtml(previewData.title) + '</div>';
+            } else {
+                html += '<div class="link-preview-title">Link Preview</div>';
+            }
+            
+            // Add description if available
+            if (previewData.description) {
+                const shortDesc = previewData.description.length > 150 ? 
+                    previewData.description.substring(0, 150) + '...' : 
+                    previewData.description;
+                html += '<div class="link-preview-description">' + escapeHtml(shortDesc) + '</div>';
+            }
+            
+            // Add domain
+            if (previewData.domain) {
+                html += '<div class="link-preview-domain">';
+                html += '<i class="fas fa-globe"></i> ';
+                html += escapeHtml(previewData.domain);
+                html += '</div>';
+            }
+            
+            html += '</div>';
+            
+            linkWrapper.innerHTML = html;
+            previewDiv.appendChild(linkWrapper);
+            
+            return previewDiv;
+        }
+        
+        // Helper function to escape HTML
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function createMediaElement(url, type) {
+            if (!url) return null;
+            
+            if (type === 'video') {
+                if (url.includes('youtube.com') || url.includes('youtu.be')) {
+                    const videoId = extractYouTubeId(url);
+                    if (videoId) {
+                        const container = document.createElement('div');
+                        container.className = 'video-container';
+                        const iframe = document.createElement('iframe');
+                        iframe.src = 'https://www.youtube.com/embed/' + videoId;
+                        iframe.allowFullscreen = true;
+                        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+                        container.appendChild(iframe);
+                        return container;
+                    }
+                }
+                
+                const container = document.createElement('div');
+                container.className = 'video-container';
+                const video = document.createElement('video');
+                video.src = url;
+                video.controls = true;
+                video.className = 'popup-video';
+                container.appendChild(video);
+                return container;
+                
+            } else if (type === 'audio') {
+                const audio = document.createElement('audio');
+                audio.src = url;
+                audio.controls = true;
+                audio.className = 'popup-audio';
+                return audio;
+            }
+            
+            return null;
+        }
+        
+        function extractYouTubeId(url) {
+            const patterns = [
+                /(?:youtube\\.com\\/watch\\?v=|youtu\\.be\\/|youtube\\.com\\/embed\\/)([^&\\n?#]+)/,
+                /^([A-Za-z0-9_-]{11})$/
+            ];
+            
+            for (const pattern of patterns) {
+                const match = url.match(pattern);
+                if (match && match[1]) return match[1];
+            }
+            return null;
+        }
+        
+        function positionPopup(x, y) {
+            const popupWidth = popup.offsetWidth;
+            const popupHeight = popup.offsetHeight;
+            const container = document.querySelector('.image-container');
+            const containerRect = container.getBoundingClientRect();
+            
+            let left = x + 40;
+            let top = y - popupHeight / 2;
+            
+            ${smartPositioning ? `
+            if (left + popupWidth > containerRect.width) {
+                left = x - popupWidth - 40;
+            }
+            if (left < 20) left = 20;
+            
+            if (top + popupHeight > containerRect.height) {
+                top = containerRect.height - popupHeight - 20;
+            }
+            if (top < 20) top = 20;
+            ` : ''}
+            
+            popup.style.left = left + 'px';
+            popup.style.top = top + 'px';
+        }
+        
+        async function showMarkerPopup(marker) {
+            popupTitle.textContent = marker.title;
+            popupDesc.textContent = marker.description;
+            popupLink.style.display = 'none';
+            popupMedia.innerHTML = '';
+            
+            if (marker.type === 'link' && marker.link) {
+                popupLink.href = marker.link;
+                popupLink.textContent = marker.link.length > 50 ? 
+                    marker.link.substring(0, 50) + '...' : marker.link;
+                popupLink.style.display = 'block';
+                
+                // Show loading indicator while fetching preview
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = 'preview-loading';
+                loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading preview...';
+                popupMedia.appendChild(loadingDiv);
+                
+                // Fetch and display link preview
+                try {
+                    // Add timeout to prevent hanging
+                    const previewPromise = fetchLinkPreview(marker.link);
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout')), 10000)
+                    );
+                    
+                    const previewData = await Promise.race([previewPromise, timeoutPromise]);
+                    
+                    loadingDiv.remove();
+                    
+                    if (previewData) {
+                        const preview = createLinkPreview(previewData);
+                        if (preview) {
+                            popupMedia.appendChild(preview);
+                        }
+                    } else {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'preview-error';
+                        errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Could not load preview';
+                        popupMedia.appendChild(errorDiv);
+                    }
+                } catch (error) {
+                    loadingDiv.remove();
+                    console.error('Preview error:', error);
+                    
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'preview-error';
+                    if (error.message === 'Timeout') {
+                        errorDiv.innerHTML = '<i class="fas fa-clock"></i> Preview timed out';
+                    } else {
+                        errorDiv.innerHTML = '<i class="fas fa-exclamation-circle"></i> Error loading preview';
+                    }
+                    popupMedia.appendChild(errorDiv);
+                }
+                
+            } else if (marker.type === 'video' && marker.video) {
+                const videoElement = createMediaElement(marker.video, 'video');
+                if (videoElement) popupMedia.appendChild(videoElement);
+            } else if (marker.type === 'audio' && marker.audio) {
+                const audioElement = createMediaElement(marker.audio, 'audio');
+                if (audioElement) popupMedia.appendChild(audioElement);
+            }
+        }
+        
+        function renderMarkers() {
+            markersContainer.innerHTML = '';
+            const imgRect = image.getBoundingClientRect();
+            const containerRect = image.parentElement.getBoundingClientRect();
+            
+            markers.forEach(marker => {
+                const m = document.createElement('div');
+                m.className = 'marker ' + marker.type;
+                
+                const x = (marker.x / 100) * imgRect.width;
+                const y = (marker.y / 100) * imgRect.height;
+                
+                m.style.left = x + 'px';
+                m.style.top = y + 'px';
+                m.innerHTML = '<i class="fas fa-' + markerIcons[marker.type] + '"></i>';
+                
+                m.addEventListener('click', async function(e) {
+                    e.stopPropagation();
+                    
+                    await showMarkerPopup(marker);
+                    
+                    positionPopup(x, y);
+                    popup.style.display = 'block';
+                });
+                
+                markersContainer.appendChild(m);
+            });
+        }
+        
+        image.onload = renderMarkers;
+        
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.marker') && !e.target.closest('.popup')) {
+                popup.style.display = 'none';
+            }
+        });
+        
+        window.addEventListener('resize', function() {
+            if (image.complete) {
+                renderMarkers();
+            }
+        });
+        
+        // Close popup when clicking the close button
+        document.querySelector('.popup-close').addEventListener('click', function() {
+            popup.style.display = 'none';
+        });
+        
+        if (image.complete) {
+            renderMarkers();
+        } else {
+            image.addEventListener('load', renderMarkers);
+        }
+    <\/script>
+</body>
+</html>`;
+    }
+}
+
+class Application {
+    constructor() {
+        this.state = new AppState();
+        this.markerManager = new MarkerManager(this.state);
+        this.imageManager = new ImageManager(this.state, this.markerManager);
+        this.exportManager = new ExportManager(this.state, this.markerManager);
+        
+        this.initialize();
+    }
+
+    initialize() {
+        this.setupEventListeners();
+        this.setupKeyboardShortcuts();
+        this.state.saveToHistory();
+    }
+
+    setupEventListeners() {
+        // File upload
+        document.getElementById('uploadArea').addEventListener('click', () => {
+            document.getElementById('imageUpload').click();
+        });
+
+        document.getElementById('imageUpload').addEventListener('change', async (e) => {
+            if (e.target.files[0]) {
+                try {
+                    const originalHTML = document.getElementById('uploadArea').innerHTML;
+                    document.getElementById('uploadArea').innerHTML = 
+                        '<i class="fas fa-spinner fa-spin"></i><p>Loading image...</p>';
+                    
+                    await this.imageManager.loadImage(e.target.files[0]);
+                    document.getElementById('uploadArea').innerHTML = originalHTML;
+                } catch (error) {
+                    alert(error);
+                    document.getElementById('uploadArea').innerHTML = originalHTML;
+                }
+            }
+        });
+
+        // Drag and drop for file upload
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            if (e.dataTransfer.files[0]) {
+                try {
+                    await this.imageManager.loadImage(e.dataTransfer.files[0]);
+                } catch (error) {
+                    alert(error);
+                }
+            }
+        });
+
+        // Marker type selection
+        document.querySelectorAll('.marker-type').forEach(type => {
+            type.addEventListener('click', () => {
+                document.querySelectorAll('.marker-type').forEach(t => t.classList.remove('selected'));
+                type.classList.add('selected');
+                this.state.currentMarkerType = type.dataset.type;
+                this.markerManager.updateFieldsVisibility();
+            });
+        });
+
+        // Form buttons
+        document.getElementById('saveMarker').addEventListener('click', () => this.saveMarker());
+        document.getElementById('deleteMarker').addEventListener('click', () => this.deleteMarker());
+        document.getElementById('clearForm').addEventListener('click', () => this.markerManager.resetForm());
+        document.getElementById('clearMarkers').addEventListener('click', () => this.clearAllMarkers());
+        document.getElementById('closePopup').addEventListener('click', () => {
+            document.getElementById('markerPopup').style.display = 'none';
+        });
+
+        // Search
+        document.getElementById('markerSearch').addEventListener('input', (e) => {
+            this.markerManager.filterMarkers(e.target.value.toLowerCase());
+        });
+
+        // History controls
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            if (this.state.undo()) {
+                this.markerManager.renderAllMarkers();
+                this.markerManager.updateMarkerList();
+                this.markerManager.resetForm();
+            }
+        });
+
+        document.getElementById('redoBtn').addEventListener('click', () => {
+            if (this.state.redo()) {
+                this.markerManager.renderAllMarkers();
+                this.markerManager.updateMarkerList();
+                this.markerManager.resetForm();
+            }
+        });
+
+        // Project controls
+        document.getElementById('saveProjectBtn').addEventListener('click', () => this.saveProject());
+        document.getElementById('loadProjectBtn').addEventListener('click', () => this.loadProject());
+        document.getElementById('exportBtn').addEventListener('click', () => this.exportProject());
+
+        // Export modal
+        document.getElementById('copyCodeBtn').addEventListener('click', () => this.copyExportCode());
+        document.getElementById('downloadBtn').addEventListener('click', () => this.downloadExportFile());
+        document.getElementById('closeExportBtn').addEventListener('click', () => {
+            document.getElementById('exportModal').classList.add('hidden');
+        });
+
+        // Setup image events
+        this.imageManager.setupImageEvents();
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 's':
+                        e.preventDefault();
+                        this.saveProject();
+                        break;
+                    case 'o':
+                        e.preventDefault();
+                        this.loadProject();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        this.exportProject();
+                        break;
+                    case 'z':
+                        e.preventDefault();
+                        this.undo();
+                        break;
+                    case 'y':
+                        e.preventDefault();
+                        this.redo();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Delete' && this.state.selectedMarkerId) {
+                this.deleteMarker();
+            }
+            
+            if (e.key === 'Escape') {
+                document.getElementById('markerPopup').style.display = 'none';
+                this.markerManager.resetForm();
+            }
+        });
+    }
+
+    saveMarker() {
+        if (!this.state.selectedMarkerId) {
+            alert('Please select a marker to edit, or click on the image to add a new marker.');
+            return;
+        }
+
+        const marker = this.state.getMarker(this.state.selectedMarkerId);
+        if (!marker) return;
+
+        const title = document.getElementById('markerTitle').value.trim();
+        const description = document.getElementById('markerDescription').value.trim();
+        const link = document.getElementById('markerLink').value.trim();
+        const video = document.getElementById('markerVideo').value.trim();
+        const audio = document.getElementById('markerAudio').value.trim();
+
+        if (!title) {
+            alert('Marker title is required');
+            return;
+        }
+
+        if (link && !this.isValidUrl(link)) {
+            alert('Please enter a valid URL for the link');
+            return;
+        }
+        if (video && !this.isValidUrl(video)) {
+            alert('Please enter a valid URL for the video');
+            return;
+        }
+        if (audio && !this.isValidUrl(audio)) {
+            alert('Please enter a valid URL for the audio');
+            return;
+        }
+
+        const updatedMarker = this.state.updateMarker(marker.id, {
+            title,
+            description,
+            link,
+            video,
+            audio,
+            type: this.state.currentMarkerType
+        });
+
+        if (updatedMarker) {
+            this.markerManager.renderAllMarkers();
+            this.markerManager.updateMarkerList();
+            this.markerManager.selectMarker(marker.id);
+            
+            if (document.getElementById('markerPopup').style.display === 'block') {
+                this.markerManager.showMarkerPopup(updatedMarker);
+            }
+            
+            this.markerManager.resetForm();
+            alert('Marker updated!');
+        }
+    }
+
+    deleteMarker() {
+        if (this.state.selectedMarkerId && confirm('Delete this marker?')) {
+            this.state.deleteMarker(this.state.selectedMarkerId);
+            this.markerManager.renderAllMarkers();
+            this.markerManager.updateMarkerList();
+            document.getElementById('markerPopup').style.display = 'none';
+            this.markerManager.resetForm();
+        }
+    }
+
+    clearAllMarkers() {
+        if (this.state.markers.length === 0) return;
+        
+        if (confirm('Clear all markers? This cannot be undone.')) {
+            this.state.clearMarkers();
+            this.markerManager.renderAllMarkers();
+            this.markerManager.updateMarkerList();
+            document.getElementById('markerPopup').style.display = 'none';
+            this.markerManager.resetForm();
+        }
+    }
+
+    undo() {
+        if (this.state.undo()) {
+            this.markerManager.renderAllMarkers();
+            this.markerManager.updateMarkerList();
+            this.markerManager.resetForm();
+            return true;
+        }
+        return false;
+    }
+
+    redo() {
+        if (this.state.redo()) {
+            this.markerManager.renderAllMarkers();
+            this.markerManager.updateMarkerList();
+            this.markerManager.resetForm();
+            return true;
+        }
+        return false;
+    }
+
+    isValidUrl(string) {
+        try {
+            new URL(string);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+
+    saveProject() {
+        if (!this.state.currentImage) {
+            alert('Please upload an image first');
+            return;
+        }
+
+        const projectName = prompt('Project name:', 
+            this.state.currentImage.name.replace(/\.[^/.]+$/, "") || 'Project');
+        if (!projectName) return;
+
+        const project = {
+            name: projectName,
+            image: this.state.currentImage,
+            markers: this.state.markers,
+            date: new Date().toISOString()
+        };
+
+        const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+        projects.push(project);
+        localStorage.setItem('projects', JSON.stringify(projects));
+        alert(`Project "${projectName}" saved!`);
+    }
+
+    loadProject() {
+        const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+        if (projects.length === 0) {
+            alert('No saved projects found');
+            return;
+        }
+
+        const projectNames = projects.map((p, i) => 
+            `${i + 1}. ${p.name} (${new Date(p.date).toLocaleDateString()})`
+        ).join('\n');
+
+        const selection = prompt(`Available projects:\n\n${projectNames}\n\nEnter project number or name:`);
+        let project = null;
+
+        if (selection) {
+            const index = parseInt(selection) - 1;
+            if (!isNaN(index) && index >= 0 && index < projects.length) {
+                project = projects[index];
+            } else {
+                project = projects.find(p => 
+                    p.name.toLowerCase().includes(selection.toLowerCase()));
+            }
+        }
+
+        if (project) {
+            this.state.currentImage = project.image;
+            this.state.markers = project.markers || [];
+            
+            document.getElementById('imageDisplay').src = project.image.src;
+            document.getElementById('imageDisplay').style.display = 'block';
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('currentImageName').textContent = project.name;
+            document.getElementById('imageInfo').classList.remove('hidden');
+            
+            setTimeout(() => {
+                this.markerManager.renderAllMarkers();
+                this.markerManager.updateMarkerList();
+                this.markerManager.resetForm();
+                this.state.saveToHistory();
+                alert(`Project "${project.name}" loaded!`);
+            }, 100);
+        } else {
+            alert('Project not found');
+        }
+    }
+
+    exportProject() {
+        if (!this.state.currentImage || this.state.markers.length === 0) {
+            alert('Please create a project with markers first');
+            return;
+        }
+
+        const projectName = prompt('Project name for export:', 
+            this.state.currentImage.name.replace(/\.[^/.]+$/, "") || 'Interactive Image');
+        if (!projectName) return;
+
+        const responsive = confirm('Enable responsive design for mobile devices?');
+        const smartPositioning = confirm('Use smart popup positioning (avoid off-screen popups)?');
+        
+        const html = this.exportManager.generateExportHTML(projectName, { 
+            responsive, 
+            smartPositioning 
+        });
+        
+        document.getElementById('exportCode').value = html;
+        document.getElementById('exportModal').classList.remove('hidden');
+    }
+
+    copyExportCode() {
+        const exportCode = document.getElementById('exportCode');
+        exportCode.select();
+        exportCode.setSelectionRange(0, 99999);
+        
+        try {
+            navigator.clipboard.writeText(exportCode.value).then(() => {
+                alert('Code copied to clipboard! Save it as an HTML file.');
+            });
+        } catch (err) {
+            try {
+                document.execCommand('copy');
+                alert('Code copied to clipboard! Save it as an HTML file.');
+            } catch (err) {
+                alert('Failed to copy code. Please select and copy manually.');
+            }
+        }
+    }
+
+    downloadExportFile() {
+        const exportCode = document.getElementById('exportCode').value;
+        const blob = new Blob([exportCode], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        
+        const projectName = prompt('Enter filename:', 
+            this.state.currentImage?.name.replace(/\.[^/.]+$/, "") || 'interactive-image') || 'interactive-image';
+        a.download = `${projectName}.html`;
+        
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
+// ====================== START APPLICATION ======================
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new Application();
+});
+</script>
+</body>
+</html>
